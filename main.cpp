@@ -1,5 +1,6 @@
 ﻿#include "framework.h"
 #include "resource.h"
+#include <string>
 
 #define MAX_LOADSTRING 100
 
@@ -12,46 +13,120 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // メイン ウィンドウ ク
 HWND hEdit;
 HFONT hFont;
 
-// このコード モジュールに含まれる関数の宣言を転送します:
-ATOM             RegisterWindowClass(HINSTANCE hInstance);
-BOOL             InitInstance(HINSTANCE, int);
-LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
+constexpr int WINDOW_WIDTH = 400;
+constexpr int WINDOW_HEIGHT = 300;
 
-void CreateEditTextBox(HWND hWnd);
+// EditTextBoxの生成
+void CreateEditTextWindow(HWND hParentWnd) {
+    RECT rect;
+    GetWindowRect(hParentWnd, &rect);
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-					  _In_opt_ HINSTANCE hPrevInstance,
-					  _In_ LPWSTR    lpCmdLine,
-					  _In_ int       nCmdShow) {
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
+    // EditTextBoxウィンドを生成
+    hEdit = CreateWindowW(
+        _T("EDIT"), //ウィンドウクラス名
+        _T("Simple.Task.Reminder"), //キャプション
+        WS_CHILD | WS_VISIBLE |
+        ES_AUTOHSCROLL | ES_AUTOVSCROLL |
+        ES_LEFT | ES_MULTILINE, //スタイル指定
+        0, 0, //位置
+        rect.right - rect.left - 16, rect.bottom - rect.top - 64, //幅、高さ
+        hParentWnd, //親ウィンドウ
+        (HMENU)1, // メニューまたは子ウィンドウID
+        hInst, //インスタンスハンドル
+        NULL); //その他の作成データ
 
-	// TODO: ここにコードを挿入してください。
+    // フォントの作成
+    hFont = CreateFont(
+        18, 0, 0, 0,
+        FW_NORMAL, FALSE, FALSE, 0,
+        SHIFTJIS_CHARSET,
+        OUT_DEFAULT_PRECIS,
+        CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY, FIXED_PITCH, _T("MS ゴシック"));
 
-	// グローバル文字列を初期化する
-	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	LoadStringW(hInstance, IDC_SIMPLETASKREMINDER, szWindowClass, MAX_LOADSTRING);
-	RegisterWindowClass(hInstance);
+    // フォント変更のメッセージを送信
+    SendMessage(hEdit, WM_SETFONT, (WPARAM)hFont, MAKELPARAM(FALSE, 0));
+}
 
-	// アプリケーション初期化の実行:
-	if (!InitInstance(hInstance, nCmdShow)) {
-		return FALSE;
-	}
+// バージョン情報ボックスのメッセージ ハンドラーです。
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    UNREFERENCED_PARAMETER(lParam);
+    switch (message) {
+        case WM_INITDIALOG:
+            return (INT_PTR)TRUE;
 
-	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SIMPLETASKREMINDER));
+        case WM_COMMAND:
+            if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
+                EndDialog(hDlg, LOWORD(wParam));
+                return (INT_PTR)TRUE;
+            }
+            break;
+    }
+    return (INT_PTR)FALSE;
+}
 
-	MSG msg;
+//
+//  関数: WndProc(HWND, UINT, WPARAM, LPARAM)
+//
+//  目的: メイン ウィンドウのメッセージを処理します。
+//
+//  WM_COMMAND  - アプリケーション メニューの処理
+//  WM_PAINT    - メイン ウィンドウを描画する
+//  WM_DESTROY  - 中止メッセージを表示して戻る
+//
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+        case WM_CREATE:
+            CreateEditTextWindow(hWnd);
+            break;
 
-	// メイン メッセージ ループ:
-	while (GetMessage(&msg, nullptr, 0, 0)) {
-		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-	}
+        case WM_COMMAND: {
+            int wmId = LOWORD(wParam);
+            // 選択されたメニューの解析:
+            switch (wmId) {
+                case IDM_ABOUT:
+                    DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                    break;
+                case IDM_EXIT:
+                    DestroyWindow(hWnd);
+                    break;
+                default:
+                    return DefWindowProc(hWnd, message, wParam, lParam);
+            }
+        }
+        break;
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hWnd, &ps);
+            EndPaint(hWnd, &ps);
+        }
+        break;
+        case WM_DESTROY: { // 閉じるときにファイルを保存 TODO:一時的な実装
+#pragma region
+            int textLength = GetWindowTextLengthA(hEdit);
+            std::string str;
+            str.resize(textLength);
 
-	return (int)msg.wParam;
+            // テキスト入力内容の取得
+            GetWindowTextA(hEdit, &str[0], textLength + 1);
+
+            // ファイルに出力
+            FILE* stream;
+            if (_wfopen_s(&stream, L"C:/Users/pathf/Desktop/for_reminder.txt", L"wb") != 0) {
+                break;
+            }
+            if (stream) {
+                size_t written = fwrite(str.c_str(), str.size(), 1, stream);
+                fclose(stream);
+            }
+#pragma endregion
+        }
+        PostQuitMessage(0);
+        break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
 }
 
 //
@@ -60,23 +135,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 //  目的: ウィンドウ クラスを登録します。
 //
 ATOM RegisterWindowClass(HINSTANCE hInstance) {
-	WNDCLASSEXW wcex;
+    WNDCLASSEXW wcex;
 
-	wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.cbSize = sizeof(WNDCLASSEX);
 
-	wcex.style = CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc = WndProc;
-	wcex.cbClsExtra = 0;
-	wcex.cbWndExtra = 0;
-	wcex.hInstance = hInstance;
-	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SIMPLETASKREMINDER));
-	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_SIMPLETASKREMINDER);
-	wcex.lpszClassName = szWindowClass;
-	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = WndProc;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SIMPLETASKREMINDER));
+    wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_SIMPLETASKREMINDER);
+    wcex.lpszClassName = szWindowClass;
+    wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-	return RegisterClassExW(&wcex);
+    return RegisterClassExW(&wcex);
 }
 
 //
@@ -90,119 +165,59 @@ ATOM RegisterWindowClass(HINSTANCE hInstance) {
 //        メイン プログラム ウィンドウを作成および表示します。
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
-	hInst = hInstance; // グローバル変数にインスタンス ハンドルを格納する
+    hInst = hInstance; // グローバル変数にインスタンス ハンドルを格納する
 
-	HWND hWnd = CreateWindowW(
-		szWindowClass,
-		szTitle,
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT,
-		0,
-		CW_USEDEFAULT,
-		0,
-		nullptr,
-		nullptr,
-		hInstance,
-		nullptr);
+    HWND hWnd = CreateWindowW(
+        szWindowClass,
+        szTitle,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, 0,
+        WINDOW_WIDTH, WINDOW_HEIGHT,
+        nullptr,
+        nullptr,
+        hInstance,
+        nullptr);
 
-	if (!hWnd) {
-		return FALSE;
-	}
+    if (!hWnd) {
+        return FALSE;
+    }
 
-	ShowWindow(hWnd, nCmdShow);
-	UpdateWindow(hWnd);
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
 
-	return TRUE;
+    return TRUE;
 }
 
-//
-//  関数: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  目的: メイン ウィンドウのメッセージを処理します。
-//
-//  WM_COMMAND  - アプリケーション メニューの処理
-//  WM_PAINT    - メイン ウィンドウを描画する
-//  WM_DESTROY  - 中止メッセージを表示して戻る
-//
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	switch (message) {
-		case WM_CREATE:
-			CreateEditTextBox(hWnd);
-			break;
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+                      _In_opt_ HINSTANCE hPrevInstance,
+                      _In_ LPWSTR    lpCmdLine,
+                      _In_ int       nCmdShow) {
+    UNREFERENCED_PARAMETER(hPrevInstance);
+    UNREFERENCED_PARAMETER(lpCmdLine);
 
-		case WM_COMMAND: {
-				int wmId = LOWORD(wParam);
-				// 選択されたメニューの解析:
-				switch (wmId) {
-					case IDM_ABOUT:
-						DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-						break;
-					case IDM_EXIT:
-						DestroyWindow(hWnd);
-						break;
-					default:
-						return DefWindowProc(hWnd, message, wParam, lParam);
-				}
-			}
-			break;
-		case WM_PAINT: {
-				PAINTSTRUCT ps;
-				HDC hdc = BeginPaint(hWnd, &ps);
-				// TODO: HDC を使用する描画コードをここに追加してください...
-				EndPaint(hWnd, &ps);
-			}
-			break;
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			break;
-		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
-	}
-	return 0;
-}
+    // TODO: ここにコードを挿入してください。
 
-// バージョン情報ボックスのメッセージ ハンドラーです。
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message) {
-		case WM_INITDIALOG:
-			return (INT_PTR)TRUE;
+    // グローバル文字列を初期化する
+    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+    LoadStringW(hInstance, IDC_SIMPLETASKREMINDER, szWindowClass, MAX_LOADSTRING);
+    RegisterWindowClass(hInstance);
 
-		case WM_COMMAND:
-			if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
-				EndDialog(hDlg, LOWORD(wParam));
-				return (INT_PTR)TRUE;
-			}
-			break;
-	}
-	return (INT_PTR)FALSE;
-}
+    // アプリケーション初期化の実行:
+    if (!InitInstance(hInstance, nCmdShow)) {
+        return FALSE;
+    }
 
-// EditTextBoxの生成
-void CreateEditTextBox(HWND hWnd) {
-	// EditTextBoxウィンドを生成
-	hEdit = CreateWindowW(
-		_T("EDIT"), //ウィンドウクラス名
-		NULL, //キャプション
-		WS_CHILD | WS_VISIBLE | WS_BORDER |
-		WS_HSCROLL | WS_VSCROLL | ES_AUTOHSCROLL | ES_AUTOVSCROLL |
-		ES_LEFT | ES_MULTILINE, //スタイル指定
-		10, 10, //位置
-		480, 300, //幅、高さ
-		hWnd, //親ウィンドウ
-		(HMENU)1, // メニューハンドルまたは子ウィンドウID
-		hInst, //インスタンスハンドル
-		NULL); //その他の作成データ
+    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SIMPLETASKREMINDER));
 
-	// フォントの作成
-	hFont = CreateFont(
-		18, 0, 0, 0,
-		FW_NORMAL, FALSE, FALSE, 0,
-		SHIFTJIS_CHARSET,
-		OUT_DEFAULT_PRECIS,
-		CLIP_DEFAULT_PRECIS,
-		DEFAULT_QUALITY, FIXED_PITCH, _T("MS ゴシック"));
+    MSG msg;
 
-	// フォント変更のメッセージを送信
-	SendMessage(hEdit, WM_SETFONT, (WPARAM)hFont, MAKELPARAM(FALSE, 0));
+    // メイン メッセージ ループ:
+    while (GetMessage(&msg, nullptr, 0, 0)) {
+        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
+
+    return (int)msg.wParam;
 }

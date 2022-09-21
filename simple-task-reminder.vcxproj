@@ -22,8 +22,9 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{c59b62f4-1840-4cb6-971c-90a94e951f5d}</ProjectGuid>
-    <RootNamespace>SimpleTaskReminder</RootNamespace>
+    <RootNamespace>simple-task-reminder</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>simple-task-reminder</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -135,10 +136,10 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="SimpleTaskReminder.rc" />
+    <ResourceCompile Include="simple-task-reminder.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="SimpleTaskReminder.ico" />
+    <Image Include="simple-task-reminder.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -31,7 +31,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="SimpleTaskReminder.rc">
+    <ResourceCompile Include="simple-task-reminder.rc">
       <Filter>リソース ファイル</Filter>
     </ResourceCompile>
   </ItemGroup>
@@ -39,7 +39,7 @@
     <Image Include="small.ico">
       <Filter>リソース ファイル</Filter>
     </Image>
-    <Image Include="SimpleTaskReminder.ico">
+    <Image Include="simple-task-reminder.ico">
       <Filter>リソース ファイル</Filter>
     </Image>
   </ItemGroup>

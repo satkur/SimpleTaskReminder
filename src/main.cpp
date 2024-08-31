@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <windows.h>
 
 int main() {
     // リマインダーメッセージを格納するファイルのパス
@@ -15,6 +16,10 @@ int main() {
         file.open(filePath); // 新しく作成されたファイルを開く
     }
 
+    // コンソール出力のエンコーディングをUTF8にする
+    UINT previousCP = GetConsoleOutputCP();
+    SetConsoleOutputCP(CP_UTF8);
+
     // ファイルからリマインダーメッセージを読み込む
     std::string line;
     if (file.is_open()) {
@@ -28,5 +33,7 @@ int main() {
 
     // Enterキーが押されるまで待機
     std::cin.get();
+
+    SetConsoleOutputCP(previousCP);
     return 0;
 }
